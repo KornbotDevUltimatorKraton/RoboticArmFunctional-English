@@ -1,0 +1,81 @@
+#!/usr/env/bin python2 
+#Author: Mr.Chanapai Chuadchum 
+#Project Name: Robotic Arm  VX-S 
+import os   #Misselenious Operating system function for recall the operating system software parts  
+import sys  # system subprocess 
+import pyttsx   #Speech synthesys function  
+import pyaudio  #Speech Audio thai 
+import wave     # Sound speech 
+from kivy.app import App 
+from kivy.uix.label import Label 
+from kivy.uix.button import Button 
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.layout import Layout 
+from kivy.uix.slider import Slider 
+from kivy.uix.textinput import TextInput 
+#Graphic Kivy function 
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+from kivy.clock import Clock
+from kivy.core.window import Window
+from kivy.uix.widget import Widget
+from kivy.resources import resource_find
+from kivy.graphics.transformation import Matrix
+from kivy.graphics.opengl import *
+from kivy.graphics import *
+from objloader import ObjFile # objFile loader function for the 
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+engine = pyttsx.init() 
+engine.setProperty('rate',140) # Rate of the speech  
+#from objloader import ObjFile
+class LoginScreen(Widget): 
+     def __init__(self,**kwargs): 
+        #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+        self.canvas = RenderContext(compute_normal_mat=True)
+        self.canvas.shader.source = resource_find('simple.glsl')
+        self.scene = ObjFile(resource_find("monkey.obj"))
+        super(LoginScreen, self).__init__(**kwargs)
+        self.cols = 2 
+        self.add_widget(Label(text="Robotic Arm VX-S ")) # Openning label 
+        with self.canvas:
+            self.cb = Callback(self.setup_gl_context)
+            PushMatrix()
+            self.setup_scene()
+            PopMatrix()
+            self.cb = Callback(self.reset_gl_context)
+        Clock.schedule_interval(self.update_glsl, 1 / 60.)
+
+     def setup_gl_context(self, *args):
+        glEnable(GL_DEPTH_TEST)
+
+     def reset_gl_context(self, *args):
+        glDisable(GL_DEPTH_TEST)
+
+     def update_glsl(self, delta):
+        asp = self.width / float(self.height)
+        proj = Matrix().view_clip(-asp, asp, -1, 1, 1, 100, 1)
+        self.canvas['projection_mat'] = proj
+        self.canvas['diffuse_light'] = (1.0, 1.0, 0.8)
+        self.canvas['ambient_light'] = (0.1, 0.1, 0.1)
+        self.rot.angle += delta * 100
+
+     def setup_scene(self):
+        Color(1, 1, 1, 1)
+        PushMatrix()
+        Translate(0, 0, -3)
+        self.rot = Rotate(1, 0, 1, 0)
+        m = list(self.scene.objects.values())[0]
+        UpdateNormalMatrix()
+        self.mesh = Mesh(
+            vertices=m.vertices,
+            indices=m.indices,
+            fmt=m.vertex_format,
+            mode='triangles',
+        )
+        PopMatrix()
+        #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>         
+class RoboticArmvxsPowerbySynchrotech(App):
+     def build(self):
+       return LoginScreen() 
+if __name__ =="__main__": 
+      RoboticArmvxsPowerbySynchrotech().run()   # Running the Kivy function       
+

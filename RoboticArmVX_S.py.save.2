@@ -1,0 +1,292 @@
+#Author: Mr. Chanapai Chuadchum 
+#Project Name : Robotic Arm VX-S
+#Describe: This project is for official Robotic arm controller function software 
+#!/usr/bin/env python2 
+import numpy as np # Numpy math function 
+from nanpy import(ArduinoApi,SerialManager) # Serial Manager  And arduino API function for the hardware communication 
+import pyttsx # Speech engine function for the robotic arm 
+import os  #  Misselenius Operating system function for the robotic arm recall the python function 
+import sys # System  
+import serial # Serial function normal function for communicate with the feed back angle 
+import math # Mathematic for calculation function on the system 
+import matplotlib.pyplot as plt # Mat plot for graph plot in the realtime tracking angle 
+import microgear.client as microgear # Internet of Thing function  for the system of the robotic arm 
+import time # time sleep funcion for the timing control 
+from kivy.app import App # import the kivy gui function of the system 
+from kivy.clock import Clock 
+from kivy.core.window import Window
+from kivy.resources import resource_find
+#from kivy.graphics.transformation import Matrix
+from kivy.graphics.opengl import *
+from kivy.graphics import *
+#from objloader import ObjFileLoader
+from kivy.logger import Logger
+#from rotation import SingleRotate
+from kivy.uix.widget import Widget
+import Tkinter 
+import Tkinter as tk 
+import ttk 
+from Tkinter import* # Import Tkinter to display the window option control mannual 
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+       #Intro openning speech of the arm 
+engine = pyttsx.init() # Openning the speech function of the arm 
+engine.setProperty('rate',140) #rate of the speech function system functionallize 
+engine.say("Roboic Arm version VX-S now operating") # Say intro speech function of the robotic arm 
+engine.runAndWait() # System run and wait for the run 
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+   # Base serial connection 
+try: #Base connection function  
+    connectionBase = SerialManager('/dev/ttyACM0',115200) # Serial connection function for the  base joint 
+    base = ArduinoApi(connection=connectionBase) # Connection base estrablished
+except: 
+    print("Serial Base error please reconnect again")
+    engine.say("Serial base error please recheck the serial connection")
+    engine.runAndWait() 
+# Shouder serial connection 
+try: #Shoudler connection function  
+    connectionShoulder = SerialManager('/dev/ttyACM1',115200) # Seri$
+    Shoulder = ArduinoApi(connection=connectionShoulder) # Connection base $
+except: 
+    print("Serial Shoulder error please reconnect again")
+    engine.say("Serial Shoulder error please recheck the serial connect")
+    engine.runAndWait() 
+# Elbow serial connection 
+try: #Elbow connection function  
+    connectionElbow = SerialManager('/dev/ttyACM2',115200) # Seri$
+    Elbow = ArduinoApi(connection=connectionElbow) # Connection base $
+except: 
+    print("Serial Elbow error please reconnect again")
+    engine.say("Serial Elbow error please recheck the serial connect")
+    engine.runAndWait() 
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+              # Hand part connection function 
+  #Wrist Rotator Y
+try:  # Wrist rotate y  function 
+   connectionWristRotateY = SerialManager('/dev/ttyACM3',115200) 
+   WristRotationY = ArduinoApi(connection=connectionWristRotateY) 
+except: 
+    print("Serial WristRotate Y serial error please check function")
+    engine.say("Serial Wrist Rotate y serial error please reconnect")
+    engine.runAndWait() 
+  #Wrist Rotator X 
+try: # Wrist rotate x function 
+   connectionWristRotateX = SerialManager('/dev/ttyACM4',115200) 
+   WristRotationX = ArduinoApi(connection=connectionWristRotateX) 
+except: 
+   print("Serial WristRotate X serial error please check function")
+   engine.say("Serial Write Rotate X serial error please reconnect")
+   engine.runAndWait() 
+  #Wrist Hand control 
+try: # Hand rotate 
+   connectionHand = SerialManager('/dev/ttyACM5',115200) 
+   Hand = ArduinoApi(connection=connectionHand) 
+except: 
+   print("Serial Hand connection error please check serial connection")
+   engine.say("Serial Hand error please check function")
+   engine.runAndWait()  
+   # Runing the command to be ready to recieve the command from the IoT function
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+        # Joint motor function controller 
+        #! These Actuator working continues like the normal motor but control pid by the  imu outside 
+def BaseActuator(dir,Step,speed):  # DigitalControl onoff function for the controller
+    base.digitalWrite(2,dir) 
+    for movebase in range(0,Step): 
+        base.digitalWrite(3,base.HIGH)
+        time.sleep(speed) 
+        base.digitalWrite(3,base.LOW) 
+        
+def ShoulderActuator(dir,Step,Speed): 
+    Shoulder.digitalWrite(4,dir) 
+    for moveShoulder in range(0,Step): 
+        Shoulder.digitalWrite(5,Shoulder.HIGH) 
+        time.sleep(Speed) 
+        Shoulder.digitalWrite(5,Shoulder.LOW)
+ 
+def ElbowActuator(dir,Step,Speed): 
+    Elbow.digitalWrite(6,dir) 
+    for moveElbow in range(0,Step): 
+        Elbow.digitalWrite(7,Elbow.HIGH)  
+        time.sleep(Speed) 
+        Elbow.digitalWrite(7,Elbow.LOW)
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+         #Upper body wrist hand and finger function 
+def WristRotationYActuator(dir,Step,Speed):  # Wrist Rotation Y 
+    WristRotationY.digitalWrite(2,dir) 
+    for moveWRY in range(0,Step): 
+         WristRotationY.digitalWrite(3,WristRotationY.HIGH)     
+         time.sleep(Speed) 
+         WristRotationY.digitalWrite(3,WristRotationY.LOW)
+
+def WristRotationXActuator(dir,Step,Speed): #Wrist Rotation X 
+    WristRotationX.digitalWrite(2,dir)  
+    for moveWRX in range(0,Step): 
+        WristRotationX.digitalWrite(3,Hand.HIGH)
+        time.sleep(Speed) 
+        WristRotationX.digitalWrite(3,Hand.LOW) 
+
+def WristRotationActuator(dir,Step,Speed): #Wrist Rotation  on the hand function  
+    Hand.digitalWrite(2,dir) 
+    for moveWR in range(0,Step):
+      Hand.digitalWrite(3,Hand.HIGH) 
+      time.sleep(Speed) 
+      Hand.digitalWrite(3,Hand.HIGH) 
+  
+def Finger2US(dir,Step,Speed): 
+    Hand.digitalWrite(2,dir) 
+    for moveF2 in range(0,Step):
+       Hand.digitalWrite(3,Hand.HIGH) 
+       time.sleep(Speed) 
+       Hand.digitalWrite(3,Hand.LOW)       
+
+def Finger3US(dir,Step,Speed):
+    Hand.digitalWrite(4,dir) 
+    for moveF3 in range(0,Step):
+       Hand.digitalWrite(5,Hand.HIGH) 
+       time.sleep(Speed) 
+       Hand.digitalWrite(5,Hand.LOW) 
+    # Finger function servo actuator and feed back real time feedback function # using another microcontroller to generate the pwm from the analog write out function 
+def Finger1Actuator(AngleFinger1):
+    Hand.analogWrite(8,AngleFinger1)
+def Finger2Actuator(AngleFinger2): 
+    Hand.analogWrite(9,AngleFinger2) 
+def Finger3Actuator(AngleFinger3): 
+    Hand.analogWrite(10,AngleFinger3) 
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+       #Manual mode controller 
+def BaseApproach(event): 
+     BasePID(b.get(),b.get()) # Get angle to calculate in the system 
+     print(b.get())   # Printing the output value for the robotic arm 
+def ShoulderApproach(event): # Get angle to calculate the angle function of the hight from the ground 
+    ShoulderPID(s.get(),s.get()) 
+    print(s.get())
+def ElbowApproach(event):    #Get  angle to calculate in the system 
+    ElbowPID(e.get(),e.get())  
+    print(e.get())
+def WristYApproach(event):
+    WristYPID(wy.get(),wy.get())
+    print(wy.get())  
+def WristXApproach(event):
+    Wrist    
+#def WristApproach(event): 
+
+#def Finger1Approach(event): 
+
+#def Finger2Apploach(event): 
+
+#def Finger3Approach(event): 
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+       #PID control  with IMU actuator stepper motor control
+def BasePID(setpoint,AngleBase): 
+    if AngleBase > setpoint:
+       base.digitalWrite(4,base.HIGH) 
+       BaseActuator(1,450,0.002)
+
+    if AngleBase == setpoint: 
+       base.digitalWrite(4,base.LOW) # Turn off the function of the base 
+
+    if AngleBase < setpoint: 
+       base.digitalWrite(4,base.HIGH)
+       BaseActuator(0,450,0.002)        
+def ShoulderPID(setpoint,AngleShoulder):
+  if AngleShoulder > setpoint:
+     Shoulder.digitalWrite(4,Shoulder.HIGH)
+     ShoulderActuator(1,450,0.002)
+   
+  if AngleShoulder == setpoint: 
+     Shoulder.digitalWrite(4,Shoulder.LOW)
+
+  if AngleShoulder < setpoint: 
+     Shoulder.digitalWrite(4,Shoulder.HIGH) 
+     ShoulderActuator(0,450,0.002) 
+def ElbowPID(setpoint,AngleElbow): 
+  if AngleElbow > setpoint: 
+     Elbow.digitalWrite(4,Elbow.HIGH)
+     ElbowActuator(1,450,0.002) 
+
+  if AngleElbow == setpoint: 
+     Elbow.digitalWrite(4,Elbow.LOW) 
+
+  if AngleElbow < setpoint: 
+     Elbow.digitalWrite(4,Elbow.HIGH)
+     ElbowActuator(0,450,0.002)
+def WristYPID(setpoint,AngleWristY): 
+     if AngleWristY > setpoint:
+        WristRotationY.digitalWrite(4,WristRotationY.HIGH)
+        WristRotationYActuator(1,450,0.002) 
+     if AngleWristY == setpoint: 
+        WristRotationY.digitalWrite(4,WristRotationY.LOW) 
+     if AngleWristY < setpoint: 
+        WristRotationY.digitalWrite(4,WristRotationY.HIGH) 
+        WristRotationYActuator(0,450,0.002)   
+def WristXPID(setpoint,AngleWristX): 
+    if AngleWristX > setpoint:
+       WristRotationX.digitalWrite(4,WristRotationX.HIGH)
+       WristRotationXActuator(0,450,0.002)
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+       # Kinematic function for the Arm controller (X,Y,Z) Euler frame 
+def Kinmaticinput(l1,l2,Baseheight,x,y,z,AngleBase,AngleShoulder,AngleElbow,AngleWristRotatey,AngleWristRotatex,AngleWristRotate,Finger1feed,Finger2feed,Finger3feed):   # Input the 3 parameters axis to the sistem 
+    # Joint manipulator control
+    BasePID(math.degrees(math.atan(y/x)),AngleBase) # Base Variable all input 
+    ShoulderPID(math.degrees(math.asin(z+Baseheight/l1)),AngleShoulder) #Shoulder Variable all input 
+    ElbowPID(math.degrees(math.acos(((math.pow(l1,2) + math.pow(l2,2))-(math.pow(x,2)+ math.pow(y,2)))/2*l1*l2)),AngleElbow)  #Elbow Angle calculation functoin 
+    WristYPID((180-((math.degrees(math.asin(z+Baseheight/l1))+(math.degrees(math.acos(((math.pow(l1,2) + math.pow(l2,2))-(math.pow(x,2)+ math.pow(y,2)))/2*l1*l2)))))),AngleWristRotatey)
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+          # Kivy GUI operating screen user interface 
+class RoboticArm(App): 
+    pass 
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+      # Looping iteration recieving and sending the command
+while(True):
+      RoboticArm().run()     
+      Master = Tkinter.Tk() # Tkinter window initiated when Trigger window working 
+      Master.title("Robotic arm control function ")
+      Master.geometry('380x750')
+      Label1 = Label(Master,text = "Base Angle",fg = 'blue',font=("Helvtical",11))
+      Label1.pack() 
+      #2d = Scale(Master,from_= 0,to=180,orient=HORIZONTAL,command=BaseApproach)
+      #2d.set(0) 
+      #2d.pack()
+      #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+                # Base Horizontal function 
+      b = Scale(Master, from_=0, to=180, orient=HORIZONTAL,command=BaseApproach)
+      b.set(90)
+      b.pack()
+      Label2 = Label(Master,text = "Shoulder Angle",fg ='blue',font=("Helvetical",11)) 
+      Label2.pack()    
+              # Shoulder HorizontalFunction 
+      s = Scale(Master, from_=0, to=180, orient=HORIZONTAL,command=ShoulderApproach) 
+      s.set(90) 
+      s.pack() 
+      Label3 = Label(Master,text = "Elbow Angle ",fg ='blue',font=("Helvetical",11))
+      Label3.pack()
+                 #Elbow  HorizontalFunction 
+      e = Scale(Master,from_=0, to=180, orient=HORIZONTAL,command=ElbowApproach) 
+      e.set(90)
+      e.pack() 
+      Label4 = Label(Master,text = "Wrist Y Angle",fg ='blue',font=('Helvetical',11)) 
+      Label4.pack() 
+                #WristY HorizontalFunction 
+      wy = Scale(Master,from_=0 ,to=180, orient=HORIZONTAL,command=WristYApproach)
+      wy.set(90) 
+      wy.pack()     
+     
+      #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> 
+      Master.mainloop()
+      AngleBase  = base.analogRead(0) 
+      AngleShoulder = Shoulder.analogRead(1) 
+      AngleElbow = Elbow.analogRead(2) 
+      AngleWristRotatey = WristRotationY.analogRead(3) 
+      AngleWristRotatex = WristRotationX.analogRead(4)
+      #Hand parts function control  
+      AngleWrist = Hand.analogRead(5)  # Wrist at the hand to rotate around 
+      AngleHand = Hand.analogRead(6)   
+      #Finger function for the Robotic hand controller   
+      Finger1feed = Hand.analogRead(7) # Finger function for the force sensor feeb$
+      Finger2feed = Hand.analogRead(8) 
+      Finger3feed = Hand.analogRead(9)
+      
+      Kinmaticinput(34,34,20,10,10,10,AngleBase,AngleShoulder,AngleElbow,AngleWristRotatey,AngleWristRotatex,AngleWrist,Finger1feed,Finger2feed,Finger3feed) 
+      print(AngleBase,AngleShoulder,AngleElbow,AngleWristRotatey,AngleWristRotatex,AngleWrist,AngleHand,Finger1feed,Finger2feed,Finger3feed) # Angle feed back from the body sensors translator 
+      #Master.mainloop() 
+ 
+
